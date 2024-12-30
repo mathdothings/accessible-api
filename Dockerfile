@@ -1,18 +1,28 @@
-FROM php:8.4-fpm-alpine
+# Use the official PHP image with PHP-FPM
+FROM php:8.2-fpm
+
+# Install required dependencies for NGINX
+RUN apt-get update && apt-get install -y \
+    nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions (optional, add the ones your app needs)
+# RUN docker-php-ext-install pdo pdo_mysql
+
+# Configure NGINX
+COPY ./nginx.conf /etc/nginx/nginx.conf
+
+# Set up the directory for your application
 WORKDIR /var/www/html
-COPY ./php.ini /usr/local/etc/php/conf.d/
 
-RUN apk --no-cache add \
-    curl \
-    git \
-    bash \
-    unzip
+# Copy the application code into the container
+COPY ./src /var/www/html
 
-COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
-COPY ./src/composer.json /var/www/html/
+# Set correct permissions for the /var/www/html directory
+RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
 
-# Optionally, expose port 9000 (for PHP-FPM)
-EXPOSE 9000
+# Expose the necessary ports
+EXPOSE 80
 
-# Set the entrypoint for PHP-FPM
-CMD ["sh", "-c", "composer dump-autoload && php-fpm"]
+# Start PHP-FPM and NGINX in the foreground
+CMD php-fpm -F & nginx -g 'daemon off;'
